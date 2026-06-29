@@ -18,6 +18,10 @@ module ManageIQ
           params["Headers"] ||= {}
           params["Headers"]["ContentType"] ||= "application/json"
 
+          if secrets["username"] && secrets["password"]
+            params["Headers"]["Authorization"] = "Basic #{::Base64.strict_encode64(secrets.values_at("username", "password").join(":"))}"
+          end
+
           http(params, secrets, context)
         end
 
