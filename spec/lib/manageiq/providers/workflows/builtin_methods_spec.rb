@@ -54,6 +54,78 @@ RSpec.describe ManageIQ::Providers::Workflows::BuiltinMethods do
           "output"  => {"Cause" => "You must provide either Url or Path, not both", "Error" => "States.TaskFailed"}
         )
     end
+
+    it "adds a Basic authorization header if username and password is passed in Credentials" do
+      expect(Faraday)
+        .to receive(:new)
+        .with(
+          hash_including(
+            :url     => "http://localhost:3000/api/auth",
+            :headers => hash_including("Authorization" => "Basic #{Base64.strict_encode64("admin:password")}")
+          )
+        )
+        .and_return(faraday_stub)
+      expect(faraday_stub).to receive(:get).and_return(Faraday::Response.new(:status => 200, :body => "{}"))
+
+      params  = {"Path" => "/api/auth"}
+      secrets = {"username" => "admin", "password" => "password"}
+
+      runner_context = described_class.api(params, secrets, ctx)
+      expect(runner_context)
+        .to include(
+          "running" => false,
+          "success" => true,
+          "output"  => {"Body" => "{}", "Headers" => nil, "Status" => 200}
+        )
+    end
+
+    it "adds a Bearer authorization header if bearer_token is passed in Credentials" do
+      expect(Faraday)
+        .to receive(:new)
+        .with(
+          hash_including(
+            :url     => "http://localhost:3000/api/auth",
+            :headers => hash_including("Authorization" => "Bearer abcdefg")
+          )
+        )
+        .and_return(faraday_stub)
+      expect(faraday_stub).to receive(:get).and_return(Faraday::Response.new(:status => 200, :body => "{}"))
+
+      params  = {"Path" => "/api/auth"}
+      secrets = {"bearer_token" => "abcdefg"}
+
+      runner_context = described_class.api(params, secrets, ctx)
+      expect(runner_context)
+        .to include(
+          "running" => false,
+          "success" => true,
+          "output"  => {"Body" => "{}", "Headers" => nil, "Status" => 200}
+        )
+    end
+
+    it "Bearer token takes precedence if username/password also passed" do
+      expect(Faraday)
+        .to receive(:new)
+        .with(
+          hash_including(
+            :url     => "http://localhost:3000/api/auth",
+            :headers => hash_including("Authorization" => "Bearer abcdefg")
+          )
+        )
+        .and_return(faraday_stub)
+      expect(faraday_stub).to receive(:get).and_return(Faraday::Response.new(:status => 200, :body => "{}"))
+
+      params  = {"Path" => "/api/auth"}
+      secrets = {"username" => "admin", "password" => "password", "bearer_token" => "abcdefg"}
+
+      runner_context = described_class.api(params, secrets, ctx)
+      expect(runner_context)
+        .to include(
+          "running" => false,
+          "success" => true,
+          "output"  => {"Body" => "{}", "Headers" => nil, "Status" => 200}
+        )
+    end
   end
 
   describe ".http" do
